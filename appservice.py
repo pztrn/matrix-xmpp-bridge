@@ -1,82 +1,73 @@
-# app_service.py:
-
-import json, requests
 from flask import Flask, jsonify, request
-import xmpp_component as xmpp
-import ConfigParser
-app = Flask(__name__)
+from flask.ext.classy import FlaskView
+import json
+import requests
+import threading
+import xmpp_component
 
-config = ConfigParser.ConfigParser()
-config.read('/etc/mxbridge.conf')
-TOKEN = config.get("Matrix", "token")
-APIURL = config.get("Matrix", "api_url")
+app = Flask("matrix-xmpp-bridge")
+CONFIG = None
+QUEUE = None
 
-# Observe all the things forever
-# TODO: Send these to XMPP
-@app.route("/transactions/<transaction>", methods=["PUT"])
-def on_receive_events(transaction):
-    events = request.get_json()["events"]
-    #if(event['type'] == 'm.room.message'):
-      #xmpp.sendMessage(event['user_id'] + ': ' + event['content']['body'])
-    for event in events:
-        print "User: %s Room: %s" % (event["user_id"], event["room_id"])
-        print "Event Type: %s" % event["type"]
-        print "Content: %s" % event["content"]
-    return jsonify({})
-  
-# Create this room if it doesn't exist
-@app.route("/rooms/<alias>")
-def query_alias(alias):
-  alias_localpart = alias.split(":")[0][1:]
-  createRoom(TOKEN, alias_localpart)
-  print('Room alias: ' + alias)
-  return jsonify({})
+def register_app(as_instance, base):
+    as_instance.register(app, route_base = base, trailing_slash = False)
 
-def createRoom(as_token, alias_localpart):
-  roomCreateURL = APIURL + "/createRoom?access_token=" + as_token
-  data = json.dumps({
-    "room_alias_name": alias_localpart
-  })
-  resp = requests.post(roomCreateURL, data=data, headers={"Content-Type": "application/json"})
-  print('Room creation URL: ' + roomCreateURL)
-  print('Data: ' + data)
-  print(resp.text)
-  
-@app.route("/mxbridge/send", methods=["POST"])
-def sendMessage():
-  print(request.data)
-  req = request.get_json()
-  
-  sender = req["from"]
-  #sender = request.args.get('from')
-  xmppRecipient = req["to"]
-  #xmppRecipient = request.args.get('to')
-  message = req["body"]
-  #message = request.args.get('body')
-  print('Sending to room: ' + str(xmppRecipient))
-  
-  #recipient = xmppMap(xmppRecipient)
-  
-  joinRoom(token=TOKEN, roomid=xmppRecipient)
-  sendMessageURL = APIURL + "/rooms/" + xmppRecipient + '/send/m.room.message?access_token=' + TOKEN
-  body = json.dumps({
-    "msgtype": "m.text",
-    "body": message
-  })
-  requests.post(sendMessageURL, data=body, headers={"Content-Type": "application/json"})
-  
-  return jsonify({})
+class AppService(threading.Thread, FlaskView):
+    def __init__(self, config, queue):
+        FlaskView.__init__(self)
+        threading.Thread.__init__(self)
+        self.__api_url = config["Matrix"]["api_url"] + "/rooms/" + config["Matrix"]["room_id"] + "/send/m.room.message"
+        self.__config = config
+        self.__params = {
+            "access_token": config["Matrix"]["token"]
+        }
+        self.__queue = queue
 
+        global CONFIG
+        CONFIG = self.__config
+        global QUEUE
+        QUEUE = queue
 
-def joinRoom(token, roomid):
-  if(token != None and roomid != None):
-    requests.post(APIURL + '/' + roomid + '/join?access_token=' + token)
-  elif(token == None):
-    print("Must include access token!")
-  elif(roomid == None):
-    print("Must include roomid!")
-    
+    def join_room(self):
+        if(self.__config["Matrix"]["token"] != None and self.__config["Matrix"]["room_id"] != None):
+            requests.post(self.__config["Matrix"]["api_url"] + '/join/' + self.__config["Matrix"]["room_id"], params = self.__params)
+        elif(self.__config["Matrix"]["token"] == None):
+            print("Must include access token!")
+        elif(self.__config["Matrix"]["room_id"] == None):
+            print("Must include roomid!")
+
+    def send_message_to_matrix(self, frm_user, body, id):
+        print("Sending message to Matrix...")
+        body = json.dumps({
+            "msgtype": "m.text",
+            "body": frm_user + ": " + body
+        })
+
+        url = self.__api_url + "/" + str(id)
+        requests.put(url, data = body, headers = {"Content-Type": "application/json"}, params = self.__params)
+
+    def run(self):
+        self.join_room()
+        app.config['TRAP_BAD_REQUEST_ERRORS'] = True
+        app.run(host = self.__config["appservice_listener"]["listen_address"], port = int(self.__config["appservice_listener"]["listen_port"]))
+
+class AppServiceViewTransactions(FlaskView):
+    def put(self, transaction):
+        events = request.get_json()["events"]
+        for event in events:
+            print(event['type'], event["room_id"], event["age"])
+            if event['type'] == 'm.room.message' and event["room_id"] == CONFIG["Matrix"]["room_id"] and event["age"] < 100 and not "mxbridge" in event["user_id"]:
+                data = {"from_component": "appservice", "from": event["user_id"], "to": CONFIG["XMPP"]["muc_room"], "body": event["content"]["body"]}
+                print("Adding message to queue: {0}".format(data))
+                QUEUE.append(data)
+
+                print("User: %s Room: %s" % (event["user_id"], event["room_id"]))
+                print("Event Type: %s" % event["type"])
+                print("Content: %s" % event["content"])
+
+        return jsonify({})
 
 if __name__ == "__main__":
-    app.config['TRAP_BAD_REQUEST_ERRORS'] = True
-    app.run(debug=True)
+    xmpp = xmpp_component.XMPPConnection(config)
+    xmpp.connect_to_server()
+

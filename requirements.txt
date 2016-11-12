@@ -1,0 +1,4 @@
+flask
+flask-classy
+requests
+sleekxmpp

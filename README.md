@@ -1,13 +1,18 @@
 # Matrix-XMPP Bridge
-This project creates a bridge between a Matrix room and an XMPP MUC. It is currently very early in development and only relays messages one way (from XMPP to Matrix). Use it if you wish, but don't blame me if it blows up in your face.
+This project creates a bridge between a Matrix room and an XMPP MUC. It is currently very early in development.
+
+Originally forked from https://github.com/jfrederickson/matrix-xmpp-bridge it was heavily refactored and adopted for Python 3.
 
 ## Using
 - Add an AS and HS token to registration.yaml and reference it in your homeserver config as described [here](http://matrix.org/blog/2015/03/02/introduction-to-application-services/)
-- Edit mxbridge.conf.example with user and room details for the Matrix/XMPP rooms you would like to bridge and save as /etc/mxbridge.conf
-- Start appservice.py and xmpp_component.py in a screen session
+- Edit mxbridge.conf.example with user and room details for the Matrix/XMPP rooms you would like to bridge and save as mxbridge.conf in bot's source directory
+- Start bridge.py
 
 ## Dependencies
 - sleekxmpp
 - configparser
 - requests
 - flask
+- flask-classy
+
+... or just ``pip install -r requirements.txt`` :)

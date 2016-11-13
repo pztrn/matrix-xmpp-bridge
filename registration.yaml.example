@@ -11,6 +11,8 @@ as_token: supersekret
 # This can be anything you want.
 hs_token: supersekret
 
+id: xmpp-matrix-bridge
+
 # this is the local part of the desired user ID for this AS (in this case @logging:localhost)
 sender_localpart: mxbridge
 namespaces:

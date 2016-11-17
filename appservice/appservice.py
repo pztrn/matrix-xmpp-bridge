@@ -1,20 +1,18 @@
-from flask import Flask, jsonify, request
+from flask import Flask
+from flask import jsonify
+from flask import request
 from flask.ext.classy import FlaskView
 import json
 import requests
 import threading
 
-app = Flask("matrix-xmpp-bridge")
 CONFIG = None
 QUEUE = None
 
-def register_app(as_instance, base):
-    as_instance.register(app, route_base = base, trailing_slash = False)
-
-class AppService(threading.Thread, FlaskView):
+class AppService(threading.Thread):
     def __init__(self, config, queue):
-        FlaskView.__init__(self)
         threading.Thread.__init__(self)
+        self.__app = Flask("matrix-xmpp-bridge")
         self.__api_url = config["Matrix"]["api_url"] + "/rooms/" + config["Matrix"]["room_id"] + "/send/m.room.message"
         self.__config = config
         self.__params = {
@@ -34,6 +32,9 @@ class AppService(threading.Thread, FlaskView):
             print("Must include access token!")
         elif(self.__config["Matrix"]["room_id"] == None):
             print("Must include roomid!")
+
+    def register_app(self, instance, base):
+        instance.register(self.__app, route_base = base, trailing_slash = False)
 
     def send_message_to_matrix(self, frm_user, body, id):
         print("Sending message to Matrix...")
@@ -58,8 +59,8 @@ class AppService(threading.Thread, FlaskView):
 
     def run(self):
         self.join_room()
-        app.config['TRAP_BAD_REQUEST_ERRORS'] = True
-        app.run(host = self.__config["appservice_listener"]["listen_address"], port = int(self.__config["appservice_listener"]["listen_port"]))
+        self.__app.config['TRAP_BAD_REQUEST_ERRORS'] = True
+        self.__app.run(host = self.__config["appservice_listener"]["listen_address"], port = int(self.__config["appservice_listener"]["listen_port"]))
 
 class AppServiceViewTransactions(FlaskView):
     def put(self, transaction):

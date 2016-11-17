@@ -4,7 +4,8 @@ import configparser
 import time
 import _thread
 
-import appservice
+from appservice.appservice import AppService
+from appservice.appservice import AppServiceViewTransactions
 from xmpp.connmanager import ConnectionManager
 
 class Bridge:
@@ -40,13 +41,12 @@ class Bridge:
 
                 time.sleep(1)
 
-
     def launch_webservice(self):
         print("Launching flask webservice...")
 
-        self.__appservice = appservice.AppService(self.__config, self.__queue)
-        as_view = appservice.AppServiceViewTransactions()
-        appservice.register_app(as_view, "/transactions/")
+        self.__appservice = AppService(self.__config, self.__queue)
+        as_view = AppServiceViewTransactions()
+        self.__appservice.register_app(as_view, "/transactions/")
         self.__appservice.start()
 
     def launch_xmpp_connection(self):

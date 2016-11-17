@@ -39,8 +39,10 @@ class XMPPConnection(sleekxmpp.ClientXMPP):
         self.__connected = True
 
     def muc_message(self, msg):
-        print("Received message: {0}".format(msg))
-        if(msg["mucnick"] != self.nick):
+        # We should not send messages from XMPP which have "@Matrix" in
+        # username.
+        if not "@Matrix" in msg["mucnick"]:
+            print("Received message: {0}".format(msg))
             data = {"from_component": "xmpp", "from": msg["mucnick"], "to": self.__config["Matrix"]["room_id"], "body": msg["body"], "id": msg["id"]}
             print("Adding item to queue: {0}".format(data))
             self.__queue.append(data)

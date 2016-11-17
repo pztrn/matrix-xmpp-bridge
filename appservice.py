@@ -65,8 +65,7 @@ class AppServiceViewTransactions(FlaskView):
     def put(self, transaction):
         events = request.get_json()["events"]
         for event in events:
-            print(event['type'], event["room_id"], event["age"], event["content"]["body"])
-            if event['type'] == 'm.room.message' and event["room_id"] == CONFIG["Matrix"]["room_id"] and event["age"] < 1000 and not "mxbridge" in event["user_id"]:
+            if event['type'] == 'm.room.message' and event["room_id"] == CONFIG["Matrix"]["room_id"] and event["age"] < 1000 and not "mxbridge" in event["user_id"] and "content" in event and "body" in event["content"]:
                 data = {"from_component": "appservice", "from": event["user_id"], "to": CONFIG["XMPP"]["muc_room"], "body": event["content"]["body"]}
                 print("Adding message to queue: {0}".format(data))
                 QUEUE.append(data)

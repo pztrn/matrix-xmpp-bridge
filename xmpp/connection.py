@@ -1,23 +1,30 @@
-import configparser
-import getpass
 import json
-import logging
-from optparse import OptionParser
-import requests
+#import logging
 import sleekxmpp
-import sys
 import threading
 
-logging.basicConfig(level=logging.DEBUG, format='%(levelname)-8s %(message)s')
+#logging.basicConfig(level=logging.DEBUG, format='%(levelname)-8s %(message)s')
 
-class BridgeBot(sleekxmpp.ClientXMPP):
+class XMPPConnection(sleekxmpp.ClientXMPP):
+    """
+    This class responsible for single XMPP connection and run in
+    separate thread than ConnectionManager.
+
+    It connects to XMPP with desired login, password and nickname,
+    joins XMPP room.
+    """
     def __init__(self, jid, password, room, nick):
         sleekxmpp.ClientXMPP.__init__(self, jid, password)
         self.room = room
         self.nick = nick
+        # Are we connected?
+        self.__connected = False
 
         self.add_event_handler("session_start", self.start)
         self.add_event_handler("groupchat_message", self.muc_message)
+
+    def connected(self):
+        return self.__connected
 
     def set_config(self, config):
         self.__config = config
@@ -28,9 +35,8 @@ class BridgeBot(sleekxmpp.ClientXMPP):
     def start(self, event):
         self.get_roster()
         self.send_presence()
-        self.plugin["xep_0045"].joinMUC(self.room,
-                                        self.nick,
-                                        wait=True)
+        self.plugin["xep_0045"].joinMUC(self.room, self.nick, wait=True)
+        self.__connected = True
 
     def muc_message(self, msg):
         print("Received message: {0}".format(msg))
@@ -40,25 +46,27 @@ class BridgeBot(sleekxmpp.ClientXMPP):
             self.__queue.append(data)
             print("Queue len: " + str(len(self.__queue)))
 
-class XMPPConnection(threading.Thread):
-    def __init__(self, config, queue):
+class XMPPConnectionWrapper(threading.Thread):
+    """
+    This is a wrapper around XMPPConnection for launching later in
+    separate thread.
+    """
+    def __init__(self, config, queue, muc_nick):
         threading.Thread.__init__(self)
         self.__config = config
         self.__queue = queue
+        # MUC nick
+        self.__muc_nick = muc_nick
+        # XMPP connection.
         self.__xmpp = None
 
     def connect_to_server(self):
-        print("Connecting to XMPP server...")
         jid = self.__config["XMPP"]["username"]
         room = self.__config["XMPP"]["muc_room"]
         nick = self.__config["XMPP"]["nick"]
+        password = self.__config["XMPP"]["password"]
 
-        try:
-            password = self.__config["XMPP"]["password"]
-        except ConfigParser.NoOptionError:
-            password = getpass.getpass("Password: ")
-
-        self.__xmpp = BridgeBot(jid, password, room, nick)
+        self.__xmpp = XMPPConnection(jid, password, room, self.__muc_nick)
         self.__xmpp.set_config(self.__config)
         self.__xmpp.set_queue(self.__queue)
         self.__xmpp.register_plugin("xep_0045")
@@ -76,6 +84,8 @@ class XMPPConnection(threading.Thread):
     def run(self):
         self.connect_to_server()
 
-    def send_message(self, from_name, to, message):
-        print("Sending message to MUC: from '{0}' - {1}".format(from_name, message))
-        self.__xmpp.send_message(mtype = "groupchat", mto = to, mbody = from_name + ": " + message)
+    def send_message(self, to, message):
+        while True:
+            if self.__xmpp.connected():
+                self.__xmpp.send_message(mtype = "groupchat", mto = to, mbody = message)
+                break

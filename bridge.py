@@ -5,7 +5,7 @@ import time
 import _thread
 
 import appservice
-import xmpp_component
+from xmpp.connmanager import ConnectionManager
 
 class Bridge:
     """
@@ -50,7 +50,7 @@ class Bridge:
         self.__appservice.start()
 
     def launch_xmpp_connection(self):
-        self.__xmpp = xmpp_component.XMPPConnection(self.__config, self.__queue)
+        self.__xmpp = ConnectionManager(self.__config, self.__queue)
         self.__xmpp.start()
 
     def read_config(self):

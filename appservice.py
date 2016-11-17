@@ -3,7 +3,6 @@ from flask.ext.classy import FlaskView
 import json
 import requests
 import threading
-import xmpp_component
 
 app = Flask("matrix-xmpp-bridge")
 CONFIG = None
@@ -38,6 +37,17 @@ class AppService(threading.Thread, FlaskView):
 
     def send_message_to_matrix(self, frm_user, body, id):
         print("Sending message to Matrix...")
+        # Splitting "@Matrix" from user highlight, if any.
+        if "@Matrix" in body:
+            idx = 0
+            body_s = body.split(" ")
+            for item in body_s:
+                if "@Matrix" in item:
+                    idx = body_s.index(item)
+
+            body_s[idx] = "@" + body_s[idx].split("@")[0]
+            body = " ".join(body_s)
+
         body = json.dumps({
             "msgtype": "m.text",
             "body": frm_user + ": " + body
@@ -55,8 +65,8 @@ class AppServiceViewTransactions(FlaskView):
     def put(self, transaction):
         events = request.get_json()["events"]
         for event in events:
-            print(event['type'], event["room_id"], event["age"])
-            if event['type'] == 'm.room.message' and event["room_id"] == CONFIG["Matrix"]["room_id"] and event["age"] < 100 and not "mxbridge" in event["user_id"]:
+            print(event['type'], event["room_id"], event["age"], event["content"]["body"])
+            if event['type'] == 'm.room.message' and event["room_id"] == CONFIG["Matrix"]["room_id"] and event["age"] < 1000 and not "mxbridge" in event["user_id"]:
                 data = {"from_component": "appservice", "from": event["user_id"], "to": CONFIG["XMPP"]["muc_room"], "body": event["content"]["body"]}
                 print("Adding message to queue: {0}".format(data))
                 QUEUE.append(data)
@@ -66,8 +76,3 @@ class AppServiceViewTransactions(FlaskView):
                 print("Content: %s" % event["content"])
 
         return jsonify({})
-
-if __name__ == "__main__":
-    xmpp = xmpp_component.XMPPConnection(config)
-    xmpp.connect_to_server()
-

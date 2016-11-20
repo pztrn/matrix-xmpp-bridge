@@ -9,7 +9,8 @@ class ConnectionManager(threading.Thread):
     """
     def __init__(self, config, queue):
         threading.Thread.__init__(self)
-        self.__config = config
+        self.__config_instance = config
+        self.__config = config.get_config()
         self.__queue = queue
         # XMPP mapped nicks.
         # Format:

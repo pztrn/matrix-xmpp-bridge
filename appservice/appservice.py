@@ -12,16 +12,17 @@ QUEUE = None
 class AppService(threading.Thread):
     def __init__(self, config, queue):
         threading.Thread.__init__(self)
+        self.__config_instance = config
+        self.__config = config.get_config()
         self.__app = Flask("matrix-xmpp-bridge")
-        self.__api_url = config["Matrix"]["api_url"] + "/rooms/" + config["Matrix"]["room_id"] + "/send/m.room.message"
-        self.__config = config
+        self.__api_url = config.get_config()["Matrix"]["api_url"] + "/rooms/" + config.get_config()["Matrix"]["room_id"] + "/send/m.room.message"
         self.__params = {
-            "access_token": config["Matrix"]["token"]
+            "access_token": config.get_config()["Matrix"]["token"]
         }
         self.__queue = queue
 
         global CONFIG
-        CONFIG = self.__config
+        CONFIG = config.get_config()
         global QUEUE
         QUEUE = queue
 

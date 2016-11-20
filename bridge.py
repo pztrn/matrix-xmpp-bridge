@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
-import configparser
+import os
+import sys
 import time
 import threading
 
 from appservice.appservice import AppService
 from appservice.appservice import AppServiceViewTransactions
+from config.config import Config
 from msgqueue.queue import Queue
 from xmpp.connmanager import ConnectionManager
 
@@ -56,10 +58,15 @@ class Bridge:
         self.__xmpp.start()
 
     def read_config(self):
-        print("Reading configuration from mxbridge.conf...")
+        print("Initializing configuration...")
+        self.__config = Config()
 
-        self.__config = configparser.ConfigParser()
-        self.__config.read('mxbridge.conf')
+        # Bridge path.
+        PATH = sys.modules["config.config"].__file__
+        PATH = os.path.sep.join(PATH.split(os.path.sep)[:-2])
+        self.__config.set_temp_value("BRIDGE_PATH", PATH)
+
+        self.__config.parse_config()
 
 if __name__ == "__main__":
     b = Bridge()

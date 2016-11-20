@@ -20,7 +20,7 @@ class XMPPConnection(sleekxmpp.ClientXMPP):
         # Are we connected?
         self.__connected = False
 
-        self.add_event_handler("session_start", self.start)
+        self.add_event_handler("session_start", self.start_session)
         self.add_event_handler("groupchat_message", self.muc_message)
 
     def connected(self):
@@ -32,7 +32,7 @@ class XMPPConnection(sleekxmpp.ClientXMPP):
     def set_queue(self, queue):
         self.__queue = queue
 
-    def start(self, event):
+    def start_session(self, event):
         self.get_roster()
         self.send_presence()
         self.plugin["xep_0045"].joinMUC(self.room, self.nick, wait=True)
@@ -46,7 +46,7 @@ class XMPPConnection(sleekxmpp.ClientXMPP):
             data = {"from_component": "xmpp", "from": msg["mucnick"], "to": self.__config["Matrix"]["room_id"], "body": msg["body"], "id": msg["id"]}
             print("Adding item to queue: {0}".format(data))
             self.__queue.add_message(data)
-            print("Queue len: " + str(len(self.__queue)))
+            print("Queue len: " + str(self.__queue.items_in_queue()))
 
 class XMPPConnectionWrapper(threading.Thread):
     """

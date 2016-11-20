@@ -1,4 +1,3 @@
-import sleekxmpp
 import threading
 
 from xmpp.connection import XMPPConnection, XMPPConnectionWrapper

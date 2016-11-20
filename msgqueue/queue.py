@@ -12,7 +12,7 @@ class Queue:
 
     def get_message(self):
         self.__lock.acquire(blocking = True)
-        msg = self.__queue.pop()
+        msg = self.__queue.pop(0)
         self.__lock.release()
         return msg
 

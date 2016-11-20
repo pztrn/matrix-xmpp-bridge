@@ -2,10 +2,11 @@
 
 import configparser
 import time
-import _thread
+import threading
 
 from appservice.appservice import AppService
 from appservice.appservice import AppServiceViewTransactions
+from msgqueue.queue import Queue
 from xmpp.connmanager import ConnectionManager
 
 class Bridge:
@@ -18,22 +19,23 @@ class Bridge:
         # Configuration.
         self.__config = None
         # Message queue.
-        self.__queue = []
+        self.__queue = None
         # XMPP.
         self.__xmpp = None
 
     def go(self):
+        self.__queue = Queue()
         self.read_config()
         self.launch_webservice()
         self.launch_xmpp_connection()
 
         while True:
-            if len(self.__queue) == 0:
+            if self.__queue.is_empty():
                 time.sleep(1)
             else:
-                print("Items in queue: {0}".format(str(len(self.__queue))))
+                print("Items in queue: {0}".format(str(self.__queue.items_in_queue())))
                 print("Processing item from queue...")
-                item = self.__queue.pop()
+                item = self.__queue.get_message()
                 if item["from_component"] == "xmpp":
                     self.__appservice.send_message_to_matrix(item["from"], item["body"], item["id"])
                 if item["from_component"] == "appservice":

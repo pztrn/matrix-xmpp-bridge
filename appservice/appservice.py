@@ -69,7 +69,7 @@ class AppServiceViewTransactions(FlaskView):
             if event['type'] == 'm.room.message' and event["room_id"] == CONFIG["Matrix"]["room_id"] and event["age"] < 1000 and not "mxbridge" in event["user_id"] and "content" in event and "body" in event["content"]:
                 data = {"from_component": "appservice", "from": event["user_id"], "to": CONFIG["XMPP"]["muc_room"], "body": event["content"]["body"]}
                 print("Adding message to queue: {0}".format(data))
-                QUEUE.append(data)
+                QUEUE.add_message(data)
 
                 print("User: %s Room: %s" % (event["user_id"], event["room_id"]))
                 print("Event Type: %s" % event["type"])

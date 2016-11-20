@@ -45,7 +45,7 @@ class XMPPConnection(sleekxmpp.ClientXMPP):
             print("Received message: {0}".format(msg))
             data = {"from_component": "xmpp", "from": msg["mucnick"], "to": self.__config["Matrix"]["room_id"], "body": msg["body"], "id": msg["id"]}
             print("Adding item to queue: {0}".format(data))
-            self.__queue.append(data)
+            self.__queue.add_message(data)
             print("Queue len: " + str(len(self.__queue)))
 
 class XMPPConnectionWrapper(threading.Thread):

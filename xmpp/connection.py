@@ -2,6 +2,7 @@ import json
 #import logging
 import sleekxmpp
 import threading
+import uuid
 
 #logging.basicConfig(level=logging.DEBUG, format='%(levelname)-8s %(message)s')
 
@@ -67,8 +68,9 @@ class XMPPConnectionWrapper(threading.Thread):
         room = self.__config["XMPP"]["muc_room"]
         nick = self.__config["XMPP"]["nick"]
         password = self.__config["XMPP"]["password"]
+        resource = uuid.uuid4().urn[9:]
 
-        self.__xmpp = XMPPConnection(jid, password, room, self.__muc_nick)
+        self.__xmpp = XMPPConnection(jid + "/" + resource, password, room, self.__muc_nick)
         self.__xmpp.set_config(self.__config)
         self.__xmpp.set_queue(self.__queue)
         self.__xmpp.register_plugin("xep_0045")

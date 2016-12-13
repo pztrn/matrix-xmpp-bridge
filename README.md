@@ -37,3 +37,11 @@ This could take some time.
 - Add an AS and HS token to registration.yaml and reference it in your homeserver config as described [here](http://matrix.org/blog/2015/03/02/introduction-to-application-services/)
 - Edit mxbridge.conf.example with user and room details for the Matrix/XMPP rooms you would like to bridge and save as mxbridge.conf in bot's source directory
 - Start bridge.py
+
+### Custom configuration file
+
+There is a possibility to specify configuration file name while launching bridge. It is useful to run several independent instances using one code base. Just pass configuration file name after "bridge.py", like this:
+
+```
+./bridge.py my_custom_mxbridge.conf
+```

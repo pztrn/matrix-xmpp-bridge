@@ -20,6 +20,10 @@ class XMPPConnection(sleekxmpp.ClientXMPP):
         self.nick = nick
         # Are we connected?
         self.__connected = False
+        # Should we process messages received by this connection?
+        # We should process (for now) only messages that received by
+        # master user.
+        self.__should_process = False
 
         self.add_event_handler("session_start", self.start_session)
         self.add_event_handler("groupchat_message", self.muc_message)
@@ -33,6 +37,9 @@ class XMPPConnection(sleekxmpp.ClientXMPP):
     def set_queue(self, queue):
         self.__queue = queue
 
+    def set_should_process(self):
+        self.__should_process = True
+
     def start_session(self, event):
         self.get_roster()
         self.send_presence()
@@ -42,7 +49,7 @@ class XMPPConnection(sleekxmpp.ClientXMPP):
     def muc_message(self, msg):
         # We should not send messages from XMPP which have "@Matrix" in
         # username.
-        if not "@Matrix" in msg["mucnick"]:
+        if self.__should_process and not "@Matrix" in msg["mucnick"]:
             print("Received message: {0}".format(msg))
             data = {"from_component": "xmpp", "from": msg["mucnick"], "to": self.__config["Matrix"]["room_id"], "body": msg["body"], "id": msg["id"]}
             print("Adding item to queue: {0}".format(data))
@@ -54,7 +61,7 @@ class XMPPConnectionWrapper(threading.Thread):
     This is a wrapper around XMPPConnection for launching later in
     separate thread.
     """
-    def __init__(self, config, queue, muc_nick):
+    def __init__(self, config, queue, muc_nick, should_process):
         threading.Thread.__init__(self)
         self.__config = config
         self.__queue = queue
@@ -62,6 +69,8 @@ class XMPPConnectionWrapper(threading.Thread):
         self.__muc_nick = muc_nick
         # XMPP connection.
         self.__xmpp = None
+        # Should messages be processed?
+        self.__should_process = should_process
 
     def connect_to_server(self):
         jid = self.__config["XMPP"]["username"]
@@ -74,6 +83,9 @@ class XMPPConnectionWrapper(threading.Thread):
         self.__xmpp.set_config(self.__config)
         self.__xmpp.set_queue(self.__queue)
         self.__xmpp.register_plugin("xep_0045")
+
+        if self.__should_process:
+            self.__xmpp.set_should_process()
 
         print("Connecting...")
         if self.__xmpp.connect(address = (self.__config["XMPP"]["server_address"], 5222), reattempt = False):

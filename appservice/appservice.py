@@ -68,7 +68,16 @@ class AppServiceViewTransactions(FlaskView):
         events = request.get_json()["events"]
         for event in events:
             if event['type'] == 'm.room.message' and event["room_id"] == CONFIG["Matrix"]["room_id"] and event["age"] < 1000 and not "mxbridge" in event["user_id"] and "content" in event and "body" in event["content"]:
-                data = {"from_component": "appservice", "from": event["user_id"], "to": CONFIG["XMPP"]["muc_room"], "body": event["content"]["body"]}
+
+                data = {"from_component": "appservice", "from": event["user_id"], "to": CONFIG["XMPP"]["muc_room"]}
+                if event["content"]["msgtype"] == "m.text":
+                    data["body"] = event["content"]["body"]
+                elif event["content"]["msgtype"] == "m.image" or event["content"]["msgtype"] == "m.file":
+                    # Craft image URL.
+                    domain = event["content"]["url"].split("/")[2]
+                    media_id = event["content"]["url"].split("/")[3]
+                    body = "http://" + domain + "/_matrix/media/r0/download/" + domain + "/" + media_id
+                    data["body"] = body
                 print("Adding message to queue: {0}".format(data))
                 QUEUE.add_message(data)
 

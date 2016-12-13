@@ -21,7 +21,7 @@ class ConnectionManager(threading.Thread):
         print("Connecting to XMPP server...")
         # This will connect our "master client", which will watch
         # for new messages.
-        conn = XMPPConnectionWrapper(self.__config, self.__queue, self.__config["XMPP"]["nick"])
+        conn = XMPPConnectionWrapper(self.__config, self.__queue, self.__config["XMPP"]["nick"], True)
         self.__xmpp_nicks[self.__config["XMPP"]["nick"]] = conn
         conn.start()
 
@@ -34,7 +34,7 @@ class ConnectionManager(threading.Thread):
         if not xmpp_nick in self.__xmpp_nicks:
             print("Creating mapped connection for '{0}'...".format(xmpp_nick))
 
-            conn = XMPPConnectionWrapper(self.__config, self.__queue, xmpp_nick)
+            conn = XMPPConnectionWrapper(self.__config, self.__queue, xmpp_nick, False)
             self.__xmpp_nicks[xmpp_nick] = conn
             conn.start()
 

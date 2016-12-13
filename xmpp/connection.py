@@ -88,7 +88,7 @@ class XMPPConnectionWrapper(threading.Thread):
             self.__xmpp.set_should_process()
 
         print("Connecting...")
-        if self.__xmpp.connect(address = (self.__config["XMPP"]["server_address"], 5222), reattempt = False):
+        if self.__xmpp.connect(address = (self.__config["XMPP"]["server_address"], 5222), reattempt = True):
             try:
                 self.__xmpp.process(block=True)
             except TypeError:
@@ -102,6 +102,12 @@ class XMPPConnectionWrapper(threading.Thread):
 
     def send_message(self, to, message):
         while True:
-            if self.__xmpp.connected():
+            if self.__xmpp and self.__xmpp.connected():
                 self.__xmpp.send_message(mtype = "groupchat", mto = to, mbody = message)
                 break
+
+    def status(self):
+        if self.__xmpp and self.__xmpp.connected():
+            return True
+        else:
+            return False

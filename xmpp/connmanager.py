@@ -31,7 +31,7 @@ class ConnectionManager(threading.Thread):
     def send_message(self, from_name, to, message):
         # Check if we have "from_name" in XMPP mapped nicks.
         xmpp_nick = from_name[1:].split(":")[0] + "@Matrix"
-        if not xmpp_nick in self.__xmpp_nicks:
+        if not xmpp_nick in self.__xmpp_nicks or not self.__xmpp_nicks[xmpp_nick].status():
             print("Creating mapped connection for '{0}'...".format(xmpp_nick))
 
             conn = XMPPConnectionWrapper(self.__config, self.__queue, xmpp_nick, False)
@@ -43,4 +43,6 @@ class ConnectionManager(threading.Thread):
             "mucnick": xmpp_nick,
             "body": message
         }
+
         self.__xmpp_nicks[xmpp_nick].send_message(to, message)
+

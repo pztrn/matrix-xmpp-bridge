@@ -4,3 +4,4 @@ registration.yaml
 .python-version
 mxbridge.conf
 registration.yaml
+data/*

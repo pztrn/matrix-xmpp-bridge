@@ -1,3 +1,6 @@
+[database]
+adaptor=json
+
 [Matrix]
 token=supersekrettoken
 api_url=http://localhost:8008/_matrix/client/api/v1
@@ -9,3 +12,7 @@ muc_room=test@conference.example.com
 nick=mxbridge
 username=test@example.com
 #password=supersekret
+
+[appservice_listener]
+listen_address=localhost
+listen_port=5000

@@ -151,7 +151,20 @@ class AppService(threading.Thread):
         This method composes a username for Matrix, which will be used
         for pseudouser.
         """
-        matrix_username = "{0}_{1}_{2}".format(self.__config["appservice"]["users_prefix"], username.encode("punycode").decode("utf-8"), conference)
+        # Check if passed nickname is in ASCII range.
+        is_ascii = True
+        try:
+            username.encode("ascii")
+        except UnicodeDecodeError:
+            is_ascii = False
+
+        if is_ascii:
+            matrix_username = "{0}_{1}_{2}".format(self.__config["appservice"]["users_prefix"],
+                username, conference)
+        else:
+            matrix_username = "{0}_{1}_{2}".format(self.__config["appservice"]["users_prefix"],
+                username.encode("punycode").decode("utf-8"), conference)
+
         matrix_nickname = "{0} (XMPP MUC)".format(username)
         return matrix_username, matrix_nickname
 

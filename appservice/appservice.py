@@ -134,7 +134,26 @@ class AppService(threading.Thread):
             "access_token": self.__joined[self.__config["Matrix"]["room_id"]][username]["token"]
         }
         d = requests.put(url, data = body_compiled, headers = {"Content-Type": "application/json"}, params = data)
-        print(d.text)
+        r = d.json()
+
+        if "errcode" in d:
+            if d["errcode"] == "M_FORBIDDEN":
+                # Something failed. Join this room, ffs!
+                data = {
+                    "user_id": nickname,
+                    "access_token": token
+                }
+                url = self.__config["Matrix"]["api_url"] + '/join/' + self.__config["Matrix"]["room_id"]
+                requests.post(url, params = self.__params, data = data)
+
+                # And resend message.
+                data = {
+                    "user_id": username,
+                    "access_token": self.__joined[self.__config["Matrix"]["room_id"]][username]["token"]
+                }
+                d = requests.put(url, data = body_compiled, headers = {"Content-Type": "application/json"}, params = data)
+                r = d.json()
+                print(r)
 
         self.__txid += 1
 

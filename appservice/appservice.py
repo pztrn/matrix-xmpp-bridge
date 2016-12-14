@@ -155,7 +155,7 @@ class AppService(threading.Thread):
         is_ascii = True
         try:
             username.encode("ascii")
-        except UnicodeDecodeError:
+        except UnicodeEncodeError:
             is_ascii = False
 
         if is_ascii:

@@ -39,7 +39,7 @@ class Bridge:
                 print("Processing item from queue...")
                 item = self.__queue.get_message()
                 if item["from_component"] == "xmpp":
-                    self.__appservice.send_message_to_matrix(item["from"], item["body"], item["id"])
+                    self.__appservice.send_message_to_matrix(item)
                 if item["from_component"] == "appservice":
                     self.__xmpp.send_message(item["from"], item["to"], item["body"])
 
@@ -49,6 +49,7 @@ class Bridge:
         print("Launching flask webservice...")
 
         self.__appservice = AppService(self.__config, self.__queue)
+        self.__appservice.initialize()
         as_view = AppServiceViewTransactions()
         self.__appservice.register_app(as_view, "/transactions/")
         self.__appservice.start()

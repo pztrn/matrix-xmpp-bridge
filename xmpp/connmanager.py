@@ -28,7 +28,7 @@ class ConnectionManager(threading.Thread):
     def run(self):
         self.connect_to_server()
 
-    def send_message(self, from_name, to, message):
+    def send_message(self, from_name, to, raw_message):
         # Check if we have "from_name" in XMPP mapped nicks.
         xmpp_nick = from_name[1:].split(":")[0] + "@Matrix"
         if not xmpp_nick in self.__xmpp_nicks or not self.__xmpp_nicks[xmpp_nick].status():
@@ -37,6 +37,12 @@ class ConnectionManager(threading.Thread):
             conn = XMPPConnectionWrapper(self.__config, self.__queue, xmpp_nick, False)
             self.__xmpp_nicks[xmpp_nick] = conn
             conn.start()
+
+        # Check if we have "(XMPP MUC)" in body. If so - remove it.
+        if "(XMPP MUC)" in raw_message:
+            message = raw_message.replace(" (XMPP MUC)", "")
+        else:
+            message = raw_message
 
         print("Sending message to MUC: from '{0}' - {1}".format(xmpp_nick, message))
         msg = {

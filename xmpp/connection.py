@@ -51,7 +51,8 @@ class XMPPConnection(sleekxmpp.ClientXMPP):
         # username.
         if self.__should_process and not "@Matrix" in msg["mucnick"]:
             print("Received message: {0}".format(msg))
-            data = {"from_component": "xmpp", "from": msg["mucnick"], "to": self.__config["Matrix"]["room_id"], "body": msg["body"], "id": msg["id"]}
+            conference = str(msg["from"]).split("/")[0]
+            data = {"from_component": "xmpp", "from": msg["mucnick"], "to": self.__config["Matrix"]["room_id"], "body": msg["body"], "id": msg["id"], "conference": conference}
             print("Adding item to queue: {0}".format(data))
             self.__queue.add_message(data)
             print("Queue len: " + str(self.__queue.items_in_queue()))

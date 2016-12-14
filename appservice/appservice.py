@@ -70,6 +70,11 @@ class AppService(threading.Thread):
         })
 
         # Get username for Matrix.
+        # We will encode username into punycode to get rid of any
+        # errors we might encounter on nicknames that outside of
+        # ASCII range.
+        # Yet nickname (which is used for profile) will stay
+        # unconverted, because Matrix have no limitations on it.
         username, nickname = self.__compose_matrix_username(queue_item["conference"], queue_item["from"])
         print(username, nickname)
 
@@ -146,7 +151,7 @@ class AppService(threading.Thread):
         This method composes a username for Matrix, which will be used
         for pseudouser.
         """
-        matrix_username = "{0}_{1}_{2}".format(self.__config["appservice"]["users_prefix"], username, conference)
+        matrix_username = "{0}_{1}_{2}".format(self.__config["appservice"]["users_prefix"], username.encode("punycode").decode("utf-8"), conference)
         matrix_nickname = "{0} (XMPP MUC)".format(username)
         return matrix_username, matrix_nickname
 

@@ -78,6 +78,8 @@ class AppServiceViewTransactions(FlaskView):
                     media_id = event["content"]["url"].split("/")[3]
                     body = "http://" + domain + "/_matrix/media/r0/download/" + domain + "/" + media_id
                     data["body"] = body
+                elif event["content"]["msgtype"] == "m.emote":
+                    data["body"] = "/me" + event["content"]["body"]
                 print("Adding message to queue: {0}".format(data))
                 QUEUE.add_message(data)
 

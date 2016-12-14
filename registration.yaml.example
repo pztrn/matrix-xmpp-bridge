@@ -16,7 +16,9 @@ id: xmpp-matrix-bridge
 # this is the local part of the desired user ID for this AS (in this case @logging:localhost)
 sender_localpart: mxbridge
 namespaces:
-  users: []
+  users:
+    - exclusive: true
+    regex: "@xmpp_.*"
   rooms: []
   aliases:
     - exclusive: false

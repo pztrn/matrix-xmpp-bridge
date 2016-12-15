@@ -18,6 +18,8 @@ nick=mxbridge
 username=test@example.com
 # XMPP password.
 password=supersekret
+# XMPP server address. Required.
+server_address=127.0.0.1
 
 [appservice_listener]
 # Address on which Matrix App Service will listen. Should be
@@ -31,4 +33,4 @@ listen_port=5000
 # Prefix that will be used by pseudousers mapping.
 users_prefix=xmpp_
 # Domain on which Matrix homeserver is run.
-domain=matrix.feder8.ru
+domain=localhost

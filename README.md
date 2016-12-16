@@ -3,6 +3,9 @@ This project creates a bridge between a Matrix room and an XMPP MUC. It is curre
 
 Originally forked from https://github.com/jfrederickson/matrix-xmpp-bridge it was heavily refactored and adopted for Python 3. Missing functionality was added (like be a bidirectional, users aliases in XMPP and Matrix, etc).
 
+**WARNING**: this bridge isn't a "bot like" one, it REQUIRES that you have a possibility to add AS registration file to synapse's configuration file!
+It is still possible to bridge XMPP MUC on other's homeserver room. Just join it and use Room ID from settings!
+
 ## Dependencies
 - python3
 - sleekxmpp

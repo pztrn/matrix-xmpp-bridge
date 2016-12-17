@@ -18,6 +18,8 @@ nick=mxbridge
 username=test@example.com
 # XMPP password.
 password=supersekret
+# XMPP server address. Required.
+server_address=127.0.0.1
 
 [appservice_listener]
 # Address on which Matrix App Service will listen. Should be

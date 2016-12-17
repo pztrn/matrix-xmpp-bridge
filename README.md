@@ -48,3 +48,7 @@ There is a possibility to specify configuration file name while launching bridge
 ```
 ./bridge.py my_custom_mxbridge.conf
 ```
+
+### Synapse
+
+Due to some (temporary) things, it is better to set `rc_messages_per_second` to 5, otherwise bridge could eat messages when it detects new XMPP user to map to Matrix.

@@ -6,6 +6,7 @@ import json
 import os
 import requests
 import threading
+import time
 
 CONFIG = None
 QUEUE = None
@@ -139,6 +140,8 @@ class AppService(threading.Thread):
                 # Join room.
                 self.join_room(self.__config["Matrix"]["room_id"], full_username)
 
+        time.sleep(5)
+        print("Sending message...")
 
         url = self.__msg_api_url + "/" + str(self.__txid)
 
@@ -165,15 +168,29 @@ class AppService(threading.Thread):
         This method composes a username for Matrix, which will be used
         for pseudouser.
         """
-        matrix_username = "{0}_{1}_{2}".format(self.__config["appservice"]["users_prefix"], username, conference)
-        matrix_username_full = "@{0}:{1}".format(matrix_username, self.__config["appservice"]["domain"])
+        # Check if passed nickname is in ASCII range.
+        is_ascii = True
+        try:
+            username.encode("ascii")
+        except UnicodeEncodeError:
+            is_ascii = False
+
+        if is_ascii:
+            matrix_username = "{0}_{1}_{2}".format(self.__config["appservice"]["users_prefix"],
+                username, conference)
+            matrix_username_full = "@{0}:{1}".format(matrix_username, self.__config["appservice"]["domain"])
+        else:
+            matrix_username = "{0}_{1}_{2}".format(self.__config["appservice"]["users_prefix"],
+                username.encode("punycode").decode("utf-8"), conference)
+            matrix_username = "@{0}_{1}_{2}:{3}".format(self.__config["appservice"]["users_prefix"],
+                username.encode("punycode").decode("utf-8"), conference, self.__config["appservice"]["domain"])
+
         matrix_nickname = "{0} (XMPP MUC)".format(username)
         return matrix_username_full, matrix_username, matrix_nickname
 
 class AppServiceViewTransactions(FlaskView):
     def put(self, transaction):
         events = request.get_json()["events"]
-        print(events)
         for event in events:
             if event['type'] == 'm.room.message' and event["room_id"] == CONFIG["Matrix"]["room_id"] and event["age"] < 1000 and not "mxbridge" in event["user_id"] and "content" in event and "body" in event["content"] and not CONFIG["appservice"]["users_prefix"] in event["user_id"]:
 

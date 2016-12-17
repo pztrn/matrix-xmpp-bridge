@@ -32,3 +32,5 @@ listen_port=5000
 users_prefix=xmpp_
 # Domain on which Matrix homeserver is run.
 domain=matrix.feder8.ru
+# Sender's local part from registration.yaml
+sender_localpart=mxbridge

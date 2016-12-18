@@ -18,7 +18,7 @@ sender_localpart: mxbridge
 namespaces:
   users:
     - exclusive: true
-    regex: "@xmpp_.*"
+      regex: "@xmpp_.*"
   rooms: []
   aliases:
     - exclusive: false

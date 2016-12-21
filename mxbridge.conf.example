@@ -5,7 +5,7 @@ adaptor=json
 # Supersecret AS token from registration.yaml.
 token=supersekrettoken
 # URL for Matrix API.
-api_url=http://localhost:8008/_matrix/client/api/v1
+api_url=http://localhost:8008/_matrix/client/r0
 # Room ID.
 room_id=!CvcvRuDYDzTOzfKKgh:localhost
 

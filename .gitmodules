@@ -1,0 +1,3 @@
+[submodule "vendor/regius"]
+	path = vendor/regius
+	url = https://dev.pztrn.name/regius/regius.git

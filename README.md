@@ -35,6 +35,12 @@ pip install -r requirements.txt
 
 This could take some time.
 
+After all don't forget to update submodules:
+
+```
+git submodule init && git submodule update
+```
+
 ## Configuration
 
 - Add an AS and HS token to registration.yaml and reference it in your homeserver config as described [here](http://matrix.org/blog/2015/03/02/introduction-to-application-services/)

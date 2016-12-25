@@ -1,4 +1,6 @@
+alembic
 flask
-flask-classy
+psycopg2
 requests
 sleekxmpp
+sqlalchemy

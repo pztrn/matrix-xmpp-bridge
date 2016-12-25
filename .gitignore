@@ -5,3 +5,6 @@ registration.yaml
 mxbridge.conf
 registration.yaml
 data/*
+config.json
+logs/*
+config/config.json

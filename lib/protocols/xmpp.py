@@ -1,32 +1,51 @@
 import threading
+import time
 
-from xmpp.connection import XMPPConnection, XMPPConnectionWrapper
+from lib.common_libs.library import Library
 
-class ConnectionManager(threading.Thread):
+from lib.protocols.xmpp_conn.connection import XMPPConnection, XMPPConnectionWrapper
+
+class Xmpp(threading.Thread, Library):
     """
     This is a connection manager - thing that ruling all XMPP connections
     we create.
     """
-    def __init__(self, config, queue):
+
+    _info = {
+        "name"          : "XMPP connections manager library",
+        "shortname"     : "xmpp_library",
+        "description"   : "Library responsible for handling XMPP connections."
+    }
+
+    def __init__(self):
+        Library.__init__(self)
         threading.Thread.__init__(self)
-        self.__config_instance = config
-        self.__config = config.get_config()
-        self.__queue = queue
+
         # XMPP mapped nicks.
         # Format:
         # {"nickname": XMPPClient connection}
         self.__xmpp_nicks = {}
 
+        # Shutdown marker.
+        self.__shutdown = False
+
     def connect_to_server(self):
         print("Connecting to XMPP server...")
         # This will connect our "master client", which will watch
         # for new messages.
-        conn = XMPPConnectionWrapper(self.__config, self.__queue, self.__config["XMPP"]["nick"], True)
-        self.__xmpp_nicks[self.__config["XMPP"]["nick"]] = conn
+        conn = XMPPConnectionWrapper(self.__config, self.__matrix_cfg, self.__queue, self.__config["nick"], True)
+        self.__xmpp_nicks[self.__config["nick"]] = conn
         conn.start()
+
+    def init_library(self):
+        self.__queue = self.loader.request_library("common_libs", "msgqueue")
+        self.__config = self.config.get_temp_value("xmpp")
+        self.__matrix_cfg = self.config.get_temp_value("matrix")
 
     def run(self):
         self.connect_to_server()
+
+        return
 
     def send_message(self, from_name, to, raw_message):
         # Check if we have "from_name" in XMPP mapped nicks.
@@ -34,7 +53,7 @@ class ConnectionManager(threading.Thread):
         if not xmpp_nick in self.__xmpp_nicks or not self.__xmpp_nicks[xmpp_nick].status():
             print("Creating mapped connection for '{0}'...".format(xmpp_nick))
 
-            conn = XMPPConnectionWrapper(self.__config, self.__queue, xmpp_nick, False)
+            conn = XMPPConnectionWrapper(self.__config, self.__matrix_cfg, self.__queue, xmpp_nick, False)
             self.__xmpp_nicks[xmpp_nick] = conn
             conn.start()
 
@@ -52,3 +71,11 @@ class ConnectionManager(threading.Thread):
 
         self.__xmpp_nicks[xmpp_nick].send_message(to, message)
 
+    def on_shutdown(self):
+        """
+        Disconnecting from XMPP.
+        """
+        for nick in self.__xmpp_nicks:
+            self.__xmpp_nicks[nick].shutdown()
+
+        self.__shutdown = True

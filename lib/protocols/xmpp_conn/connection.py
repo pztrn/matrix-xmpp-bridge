@@ -34,6 +34,9 @@ class XMPPConnection(sleekxmpp.ClientXMPP):
     def set_config(self, config):
         self.__config = config
 
+    def set_matrixconfig(self, config):
+        self.__matrix_cfg = config
+
     def set_queue(self, queue):
         self.__queue = queue
 
@@ -52,7 +55,7 @@ class XMPPConnection(sleekxmpp.ClientXMPP):
         if self.__should_process and not "@Matrix" in msg["mucnick"]:
             print("Received message: {0}".format(msg))
             conference = str(msg["from"]).split("/")[0]
-            data = {"from_component": "xmpp", "from": msg["mucnick"], "to": self.__config["Matrix"]["room_id"], "body": msg["body"], "id": msg["id"], "conference": conference}
+            data = {"type": "message_to_room", "from_component": "xmpp", "from": msg["mucnick"], "to": self.__matrix_cfg["room_id"], "body": msg["body"], "id": msg["id"], "conference": conference}
             print("Adding item to queue: {0}".format(data))
             self.__queue.add_message(data)
             print("Queue len: " + str(self.__queue.items_in_queue()))
@@ -62,9 +65,10 @@ class XMPPConnectionWrapper(threading.Thread):
     This is a wrapper around XMPPConnection for launching later in
     separate thread.
     """
-    def __init__(self, config, queue, muc_nick, should_process):
+    def __init__(self, config, matrix_config, queue, muc_nick, should_process):
         threading.Thread.__init__(self)
         self.__config = config
+        self.__matrix_cfg = matrix_config
         self.__queue = queue
         # MUC nick
         self.__muc_nick = muc_nick
@@ -72,16 +76,19 @@ class XMPPConnectionWrapper(threading.Thread):
         self.__xmpp = None
         # Should messages be processed?
         self.__should_process = should_process
+        # Shutdown marker.
+        self.__shutdown = False
 
     def connect_to_server(self):
-        jid = self.__config["XMPP"]["username"]
-        room = self.__config["XMPP"]["muc_room"]
-        nick = self.__config["XMPP"]["nick"]
-        password = self.__config["XMPP"]["password"]
+        jid = self.__config["username"]
+        room = self.__config["muc_room"]
+        nick = self.__config["nick"]
+        password = self.__config["password"]
         resource = uuid.uuid4().urn[9:]
 
         self.__xmpp = XMPPConnection(jid + "/" + resource, password, room, self.__muc_nick)
         self.__xmpp.set_config(self.__config)
+        self.__xmpp.set_matrixconfig(self.__matrix_cfg)
         self.__xmpp.set_queue(self.__queue)
         self.__xmpp.register_plugin("xep_0045")
 
@@ -89,7 +96,7 @@ class XMPPConnectionWrapper(threading.Thread):
             self.__xmpp.set_should_process()
 
         print("Connecting...")
-        if self.__xmpp.connect(address = (self.__config["XMPP"]["server_address"], 5222), reattempt = True):
+        if self.__xmpp.connect(address = (self.__config["server_address"], 5222), reattempt = True):
             try:
                 self.__xmpp.process(block=True)
             except TypeError:
@@ -101,11 +108,26 @@ class XMPPConnectionWrapper(threading.Thread):
     def run(self):
         self.connect_to_server()
 
+        while True:
+            if self.__shutdown:
+                self.__xmpp.disconnect(wait = True)
+                break
+
+            time.sleep(1)
+
+        return
+
     def send_message(self, to, message):
         while True:
             if self.__xmpp and self.__xmpp.connected():
                 self.__xmpp.send_message(mtype = "groupchat", mto = to, mbody = message)
                 break
+
+    def shutdown(self):
+        """
+        Shuts down connection.
+        """
+        self.__shutdown = True
 
     def status(self):
         if self.__xmpp and self.__xmpp.connected():

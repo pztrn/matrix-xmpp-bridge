@@ -1,0 +1,43 @@
+{
+    "preseed": {
+        "app_name": "matrix-xmpp-bridge",
+        "version": "0.0.1",
+        "url": "http://github.com/pztrn/matrix-xmpp-bridge",
+        "auth": 0,
+        "ui": "cli"
+    },
+    "paths": {
+        "regius": "CURPATH/vendor/regius",
+        "config": "config"
+    },
+    "logger": {
+        "runtime_logs_access": 0,
+        "default_debug_level": 2
+    },
+    "eventer": {
+        "suppress_fire_messages": 0
+    },
+    "matrix": {
+        "api_url": "http://localhost:8008/_matrix/client/r0",
+        "token": "supersekret",
+        "users_prefix": "xmpp",
+        "domain": "localhost",
+        "room_id": "!asdfkjaskdjas:localhost",
+        "listen_address": "0.0.0.0",
+        "listen_port": "5000"
+    },
+    "xmpp": {
+        "muc_room": "name@conference.domain.tld",
+        "nick": "MatrixBridge",
+        "username": "user@domain.tld",
+        "password": "xmpppass",
+        "server_address": "xmpp.domain.tld"
+    },
+    "database": {
+        "production_type": "postgresql+psycopg2",
+        "production_host": "localhost",
+        "production_user": "mxbridge",
+        "production_dbname": "mxbridge",
+        "production_pass": "mxbridge"
+    }
+}

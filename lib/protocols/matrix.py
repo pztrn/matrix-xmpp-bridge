@@ -1,7 +1,10 @@
 from flask import Flask
 import json
+import markdown2
 import os
+import random
 import requests
+import string
 import threading
 import time
 
@@ -28,10 +31,11 @@ class Matrix(threading.Thread, Library):
         # Flask App.
         self.__app = Flask("matrix-xmpp-bridge")
 
+        # Joined rooms list.
         self.__joined = {}
 
-        # Transaction ID for Matrix's homeserver.
-        self.__txid = 100
+        # Markdown formatter.
+        self.__markdowner = None
 
         # Shutdown marker.
         self.__shutdown = False
@@ -41,15 +45,34 @@ class Matrix(threading.Thread, Library):
         """
         """
         self.log(0, "Processing command room message...")
-        data = self.__send_message(message["room_id"], "@" + self.__bridge_username, "m.text", "Echoing message: " + message["body"])
-        self.log(2, data)
+        command = message["body"].split(" ")[0]
+        body = " ".join(message["body"].split(" ")[1:])
+        status, data = self.__commands.process_command(command, body)
+        if not status:
+            msg = "Unknown command. Type 'help' to get list of available commands."
+        else:
+            msg = data
+
+        self.log(2, "Reply: {reply}", {"reply": msg})
+
+        # Try to format Markdown message.
+        msg_markdown = self.__markdowner.convert(msg)
+        if msg_markdown != msg:
+            # [3:-4] to get rid of <p></p>.
+            rdata = self.__send_message(message["room_id"], "@" + self.__bridge_username, "m.text", msg, msg_markdown[:-1][3:-4])
+        else:
+            rdata = self.__send_message(message["room_id"], "@" + self.__bridge_username, "m.text", msg)
+
+        self.log(2, rdata)
 
     def init_library(self):
         """
         """
         self.log(0, "Initializing Matrix protocol handler...")
+        self.__rooms = self.loader.request_library("rooms", "rooms")
+        self.__commands = self.loader.request_library("commands", "commands")
 
-        self.__matrix_cfg = self.config.get_temp_value("matrix")
+        self.__matrix_cfg = self.config.get_temp_value("app_config")["matrix"]
 
         # API URL to which messages will be pushed.
         self.__msg_api_url = self.__matrix_cfg["api_url"] + "/rooms/{0}/send/m.room.message"
@@ -59,6 +82,10 @@ class Matrix(threading.Thread, Library):
         }
         # Bridge's username
         self.__bridge_username = "{0}_bridge:{1}".format(self.__matrix_cfg["users_prefix"], self.__matrix_cfg["domain"])
+        self.config.set_temp_value("/matrix/bridge_username", self.__bridge_username)
+
+        # Markdown.
+        self.__markdowner = markdown2.Markdown()
 
     def join_room(self, room_id, full_username):
         """
@@ -89,24 +116,7 @@ class Matrix(threading.Thread, Library):
         else:
             self.log(1, "User already in room, will not re-join.")
 
-        # Get members list.
-        d = requests.get(self.__matrix_cfg["api_url"] + "/rooms/" + room_id + "/members", params = self.__params)
-        data = d.json()
-
-        if "errcode" in data and data["errcode"] == "M_GUEST_ACCESS_FORBIDDEN":
-            self.log(0, "{RED}Error:{RESET} Failed to join Matrix room: permissions error!")
-            return
-
-        if not room_id in self.__joined:
-            self.__joined[room_id] = {}
-
-        for item in data["chunk"]:
-            if item["content"]["membership"] == "join":
-                self.__joined[room_id][item["state_key"][1:]] = {
-                    "username": item["state_key"]
-                }
-
-        self.log(2, "All joined users: {users}", {"users": self.__joined})
+        self.__update_users_list_in_room(room_id)
 
     def on_shutdown(self):
         """
@@ -119,14 +129,42 @@ class Matrix(threading.Thread, Library):
 
         self.__shutdown = True
 
+    def process_invite(self, message):
+        """
+        Process invite into room.
+        """
+        self.log(0, "Processing invite into Matrix room...")
+        # All invites should be done only to command room. So we should:
+        #   * Join.
+        #   * Check for users count in room.
+        #   * If users count == 2: say "hello", otherwise send error to
+        #     chat and leave room.
+        # Join room.
+        self.join_room(message["room_id"], "@" + self.__bridge_username)
+        # Check how much users we have in chat room. Leave if > 2.
+        if len(self.__joined[message["room_id"]]) > 2:
+            self.log(0, "{YELLOW}Warning:{RESET} more than 2 users in room, including me. Leaving...")
+            self.__send_message(message["room_id"], "@" + self.__bridge_username, "m.text", "Can't use this room as command room. Please, invite me to a room where we will be alone!")
+            self.__leave_room(message["room_id"], "@" + self.__bridge_username)
+            return
+        self.__send_message(message["room_id"], "@" + self.__bridge_username, "m.text", "Hello there! Type 'help' to get help :)")
+        self.__rooms.add_command_room(message["room_id"], message["user_id"])
+
     def process_message(self, message):
         """
         Processes passed message.
         """
         if message["type"] == "command_room_message":
-            if message["room_id"] not in BRIDGED_ROOMS and message["room_id"] not in COMMAND_ROOMS:
-                global COMMAND_ROOMS
-                COMMAND_ROOMS.append(message["room_id"])
+            # Here we do a check if room ID in command rooms list. This
+            # is needed because we might do something not so good and
+            # it will disappear from commands rooms list. And this
+            # check if required for re-adding room to command rooms
+            # list.
+            room_type = self.__rooms.check_room_type(message["room_id"])
+            # For now if room ID is unknown - Command room type will
+            # be forced.
+            if room_type == "Command room":
+                self.__rooms.add_command_room(message["room_id"], message["from"])
                 self.command(message)
         elif message["type"] == "invite":
             self.join_room(message["room_id"], "@" + self.__bridge_username)
@@ -138,7 +176,7 @@ class Matrix(threading.Thread, Library):
         Registers Flask view with Flask app.
         """
         #instance.register(self.__app, route_base = base, trailing_slash = False)
-        self.__app.add_url_rule(base, view_func = instance.as_view(view_name, loader = self.loader, bridge_username = self.__bridge_username))
+        self.__app.add_url_rule(base, view_func = instance.as_view(view_name, loader = self.loader))
 
     def run(self):
         """
@@ -146,7 +184,7 @@ class Matrix(threading.Thread, Library):
         """
         # Try to register our master user.
         self.__register_user("@" + self.__bridge_username, self.__bridge_username.split(":")[0], "XMPP bridge")
-        self.join_room(self.__matrix_cfg["room_id"], "@" + self.__bridge_username)
+        #self.join_room(self.__matrix_cfg["room_id"], "@" + self.__bridge_username)
         self.__app.config['TRAP_BAD_REQUEST_ERRORS'] = True
         self.__app.run(host = self.__matrix_cfg["listen_address"], port = int(self.__matrix_cfg["listen_port"]))
 
@@ -176,19 +214,19 @@ class Matrix(threading.Thread, Library):
 
         # Check if we have this user in room. And then if user already
         # registered. And register user if not. Same for joining room.
-        if not full_username[1:] in self.__joined[self.__matrix_cfg["room_id"]]:
+        if not full_username[1:] in self.__joined[queue_item["room_id"]]:
             self.__register_user(full_username, username, nickname)
 
             # Join room.
-            self.join_room(self.__matrix_cfg["room_id"], full_username)
+            self.join_room(queue_item["room_id"], full_username)
 
-        data = self.__send_message(self.__matrix_cfg["room_id"], full_username, "m.text", body)
+        data = self.__send_message(queue_item["room_id"], full_username, "m.text", body)
 
         if "error" in data and data["errcode"] == "M_FORBIDDEN" and "not in room" in data["error"]:
             self.log(0, "{RED}Error:{RESET} user {user} not in room, joining and re-sending message...", {"user": full_username})
-            self.join_room(self.__matrix_cfg["room_id"], full_username)
+            self.join_room(queue_item["room_id"], full_username)
 
-            self.__send_message(self.__matrix_cfg["room_id"], full_username, "m.text", body)
+            self.__send_message(queue_item["room_id"], full_username, "m.text", body)
 
     def __compose_matrix_username(self, conference, username):
         """
@@ -214,6 +252,19 @@ class Matrix(threading.Thread, Library):
 
         matrix_nickname = "{0} (XMPP MUC)".format(username)
         return matrix_username_full, matrix_username, matrix_nickname
+
+    def __leave_room(self, room_id, full_username):
+        """
+        Leave specified room.
+        """
+        self.log(0, "User {YELLOW}{user}{RESET} leaving room {CYAN}{room_id}{RESET}", {"user": full_username, "room_id": room_id})
+        data = {
+            "user_id": full_username,
+            "access_token": self.__params["access_token"]
+        }
+        leave_url = self.__matrix_cfg["api_url"] + "/rooms/{0}/leave".format(room_id)
+        d = requests.post(leave_url, params = data, data = json.dumps(data))
+        self.log(2, "Leave request result: {result}", {"result": d.json()})
 
     def __register_user(self, full_username, username, nickname):
         """
@@ -250,22 +301,30 @@ class Matrix(threading.Thread, Library):
             url = self.__matrix_cfg["api_url"] + "/profile/{0}/displayname".format(full_username)
             d = requests.put(url, params = data, data = json.dumps(data_to_put), headers = {"Content-Type": "application/json"})
 
-    def __send_message(self, room_id, user_id, msgtype, message):
+    def __send_message(self, room_id, user_id, msgtype, message, formatted_message = None):
         """
         Really sends message to room.
         """
         self.log(0, "Sending message...")
 
+        tx = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(20))
+
         if len(room_id) < 4:
             self.log(0, "{RED}Error:{RESET} Can't send message to undefined room ID!")
             return
 
-        body_compiled = json.dumps({
+        body = {
             "msgtype": msgtype,
-            "body": message
-        })
+            "body": message,
+        }
 
-        url = self.__msg_api_url.format(room_id) + "/" + str(self.__txid)
+        if formatted_message != None:
+            body["formatted_body"] = formatted_message
+            body["format"] = "org.matrix.custom.html"
+
+        body_compiled = json.dumps(body)
+
+        url = self.__msg_api_url.format(room_id) + "/" + tx
 
         data = {
             "user_id": user_id
@@ -274,6 +333,27 @@ class Matrix(threading.Thread, Library):
         d = requests.put(url, data = body_compiled, params = data, headers = {"Content-Type": "application/json"})
         self.log(2, "URL: {url}, homeserver's output: {output}", {"url": d.url, "output": d.text})
 
-        self.__txid += 1
-
         return d.json()
+
+    def __update_users_list_in_room(self, room_id):
+        """
+        Updates users list in room in internal storage.
+        """
+        # Get members list.
+        d = requests.get(self.__matrix_cfg["api_url"] + "/rooms/" + room_id + "/members", params = self.__params)
+        data = d.json()
+
+        if "errcode" in data and data["errcode"] == "M_GUEST_ACCESS_FORBIDDEN":
+            self.log(0, "{RED}Error:{RESET} Failed to join Matrix room: permissions error!")
+            return
+
+        if not room_id in self.__joined:
+            self.__joined[room_id] = {}
+
+        for item in data["chunk"]:
+            if item["content"]["membership"] == "join":
+                self.__joined[room_id][item["state_key"][1:]] = {
+                    "username": item["state_key"]
+                }
+
+        self.log(2, "All joined users: {users}", {"users": self.__joined})

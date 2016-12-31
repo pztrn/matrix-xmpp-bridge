@@ -2,6 +2,7 @@
 
 import json
 import os
+from sqlalchemy.orm import exc
 import sys
 import time
 import threading
@@ -36,6 +37,8 @@ class Bridge:
     def __init__(self, regius_instance):
         # App service for communication with Matrix.
         self.__appservice = None
+        # Commands.
+        self.__commands = None
         # Configuration.
         self.__config = None
         # Database.
@@ -56,6 +59,8 @@ class Bridge:
     def go(self):
         self.__queue = self.loader.request_library("common_libs", "msgqueue")
         self.initialize_database()
+        self.initialize_rooms()
+        self.load_plugins()
         self.initialize_commands()
         self.launch_webservice()
         self.launch_xmpp_connection()
@@ -72,13 +77,16 @@ class Bridge:
                         # Messages from XMPP.
                         self.__appservice.process_message(item)
                     if item["from_component"] == "appservice":
-                        if item["type"] == "invite" or item["type"] == "command_room_message":
+                        if item["type"] == "invite":
+                            # Process room invite.
+                            self.__appservice.process_invite(item)
+                        elif item["type"] == "command_room_message":
                             # Invites and command room's messages should be
                             # processed by appservice.
                             self.__appservice.process_message(item)
-                        else:
+                        #else:
                             # Messages to XMPP.
-                            self.__xmpp.send_message(item["from"], item["to"], item["body"])
+                        #    self.__xmpp.send_message(item["from"], item["to"], item["body"])
 
                     time.sleep(1)
             except KeyboardInterrupt:
@@ -88,17 +96,25 @@ class Bridge:
         """
         Initializes command room's commands.
         """
-        pass
+        self.__commands = self.loader.request_library("commands", "commands")
 
     def initialize_database(self):
         """
+        Initializes database connection, as well as loads all neccessary
+        data into RAM.
         """
         self.database = self.loader.request_library("common_libs", "database")
-        self.database.load_mappings()
         self.database.create_connection("production")
+        self.database.load_mappings()
 
         self.migrator = self.loader.request_library("database_tools", "migrator")
         self.migrator.migrate()
+
+    def initialize_rooms(self):
+        """
+        Initialize rooms handler.
+        """
+        self.rooms = self.loader.request_library("rooms", "rooms")
 
     def launch_webservice(self):
         self.log(0, "Launching Matrix protocol listener...")
@@ -116,6 +132,14 @@ class Bridge:
     def launch_xmpp_connection(self):
         self.__xmpp = self.loader.request_library("protocols", "xmpp")
         self.__xmpp.start()
+
+    def load_plugins(self):
+        """
+        """
+        self.log(0, "Loading plugins...")
+        for plugin in os.listdir(os.path.join(self.config.get_temp_value("SCRIPT_PATH"), "plugins")):
+            self.log(1, "Loading plugin '{CYAN}{plugin_name}{RESET}'...", {"plugin_name": plugin})
+            self.loader.request_plugin(plugin)
 
     def read_config(self):
         print("Initializing configuration...")

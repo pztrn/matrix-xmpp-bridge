@@ -12,17 +12,20 @@ class Shutdown(MethodView, Library):
         "description"   : "Library responsible for handling Flask shutdown requests."
     }
 
-    def __init__(self, loader = None, bridge_username = None):
+    def __init__(self, loader = None):
         Library.__init__(self)
         MethodView.__init__(self)
 
         self.loader = loader
+        self.log = None
 
     def get(self):
+        if not self.log:
+            self.log = self.loader.request_library("common_libs", "logger").log
+
         func = request.environ.get('werkzeug.server.shutdown')
         func()
 
-        self.log = self.loader.request_library("common_libs", "logger").log
         self.log(0, "Werkzeug web server shutdown call issued.")
 
         return jsonify({})

@@ -57,6 +57,7 @@ class AppService(threading.Thread):
         # Get members list.
         d = requests.get(self.__config["Matrix"]["api_url"] + "/rooms/" + self.__config["Matrix"]["room_id"] + "/members", params = self.__params)
         data = d.json()
+        print("Members list:", data)
 
         if "errcode" in data and data["errcode"] == "M_GUEST_ACCESS_FORBIDDEN":
             print("Failed to join Matrix room: permissions error!")

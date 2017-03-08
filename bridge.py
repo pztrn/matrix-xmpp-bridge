@@ -43,7 +43,7 @@ class Bridge:
                 if item["from_component"] == "appservice":
                     self.__xmpp.send_message(item["from"], item["to"], item["body"])
 
-                time.sleep(1)
+                time.sleep(0.2)
 
     def launch_webservice(self):
         print("Launching flask webservice...")

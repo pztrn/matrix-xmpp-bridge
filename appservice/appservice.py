@@ -4,7 +4,9 @@ from flask import request
 from flask.ext.classy import FlaskView
 import json
 import os
+import random
 import requests
+import string
 import threading
 import time
 
@@ -23,7 +25,7 @@ class AppService(threading.Thread):
         }
         self.__queue = queue
         self.__joined = {}
-        self.__txid = 100
+        self.__txid = ""
 
         global CONFIG
         CONFIG = config.get_config()
@@ -40,6 +42,10 @@ class AppService(threading.Thread):
             self.__joined = json.loads(open(data_path, "r").read())
 
     def join_room(self, room_id, full_username):
+        """
+        Joins room and updates users list in room.
+        """
+        print("Joinroom:", room_id, full_username)
         if len(full_username) < 4:
             print("User ID not specified!")
             return
@@ -147,7 +153,7 @@ class AppService(threading.Thread):
         time.sleep(5)
         print("Sending message...")
 
-        url = self.__msg_api_url + "/" + str(self.__txid)
+        url = self.__msg_api_url + "/" + self.__txid
 
         data = {
             "user_id": full_username
@@ -157,7 +163,7 @@ class AppService(threading.Thread):
         print(d.url)
         print(d.text)
 
-        self.__txid += 1
+        self.__txid = ''.join(random.choice(string.ascii_lowercase) for i in range(16))
 
     def run(self):
         """

@@ -52,3 +52,13 @@ There is a possibility to specify configuration file name while launching bridge
 ### Synapse
 
 Due to some (temporary) things, it is better to set `rc_messages_per_second` to 5, otherwise bridge could eat messages when it detects new XMPP user to map to Matrix.
+
+## FAQ
+
+Q: When I start the bridge it says "Application service cannot masquerade as this user.", but I didn't send anything yet. Is that critical?
+
+A: No, it is only related to master user for bridge, which isn't sending any messages.
+
+Q: Bridge eats forst message(s) after launching, WTF?
+
+A: Shit happens. But when bridge started to transmit messages - it won't eat them anymore. So just spam until transmission starts. Usually it'll need about 2 messages for each side.

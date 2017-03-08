@@ -44,6 +44,7 @@ class XMPPConnection(sleekxmpp.ClientXMPP):
         self.get_roster()
         self.send_presence()
         self.plugin["xep_0045"].joinMUC(self.room, self.nick, wait=True)
+        print("Joined to MUC.")
         self.__connected = True
 
     def muc_message(self, msg):

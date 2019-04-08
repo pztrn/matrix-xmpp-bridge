@@ -1,3 +1,5 @@
+**Development stopped due to lack of interest in XMPP for me.**
+
 # Matrix-XMPP Bridge
 This project creates a bridge between a Matrix room and an XMPP MUC. It is currently very early in development.
 
